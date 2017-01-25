@@ -23,7 +23,7 @@ This has been tested during the Fall 2016-2017 registration period. I was able t
   4. Run the following command: `pip install -r requirements.txt`
 
 # How to Use:
-  1. Edit the `data.txt` file. Any text surrounded by "**" should be deleted and replaced with valid data. The time after attempt_start will determine when the script starts to refreshing the site. __Make sure it is before you registeration date__
+  1. Edit the `data.txt` file. Any text surrounded by `**` should be deleted and replaced with valid data. The time after `start` will determine when the script starts to refreshing the site. **Make sure it is before your registeration date.**
   2. Navigate to where `autoRegister.py`.
   4. Execute `python autoRegister.py <data.txt> <optional: browser name>` in the src folder
      - Current browser names: "phantom", "chrome", and "firefox" without the quotes. The script does not care about casing.
