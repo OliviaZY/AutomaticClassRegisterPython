@@ -10,127 +10,151 @@ Supported drivers:
 Created on Jan 28, 2016
 
 @author: David Lam
+@edited: Fred Zhang
 """
 
 from selenium import webdriver
 from selenium.webdriver.common.alert import Alert
 from selenium.common.exceptions import NoSuchElementException
-import datetime
+from datetime import datetime
 import os
 import sys
 import time
 
-
-def setup_directory():
-    """
-        Creates the logs and img files if not created.
-    """
-    # Make directory for logs and images if necessary.
-    if (not os.path.isdir("../logs/")):
-        os.makedirs("../logs/")
-    if (not os.path.isdir("../img/")):
-        os.makedirs("../img/")
-
+BANNER_WEB_URL = "https://prod11gbss8.rose-hulman.edu/BanSS/twbkwbis.P_WWWLogin"
+dataMapUserName_Key = "username"
+dataMapPassword_Key = "password"
+dataMapPin_Key = "pin"
+dataMapCRN_Key = "crn"
+attempt_time_key = "attempt_start"
 
 def main():
     # Ensure a data file path is given.
     if (len(sys.argv) < 2):
         print("AutoRegister.py <dataFile> <opt:browser>")
         return
-
     setup_directory()
 
     # Initialize Data.
     dataMap = getData(sys.argv[1])
-    crnInput = dataMap["crn"]
-
-    # Initialize boolean
-    isFirefox = False  # (Firefox has Alert(driver))
-    isPhantom = False
-
     # Initialize Webdriver.
-    if (len(sys.argv) > 2):
-        if (sys.argv[2].lower() == "chrome"):
-            driver = webdriver.Chrome(
-                "../drivers/chromedriver.exe", service_log_path="../logs/chrome.log")
-        elif (sys.argv[2].lower() == "phantom"):
-            isPhantom = True
-            driver = webdriver.PhantomJS(
-                "../drivers/phantomjs.exe", service_log_path="../logs/phantom.log")
-        elif (sys.argv[2].lower() == "firefox"):
-            # Based on MDN. Import when only required to.
-            isFirefox = True
-            from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-            caps = DesiredCapabilities.FIREFOX
-            caps["marionette"] = True
-            driver = webdriver.Firefox(
-                executable_path="../drivers/geckodriver.exe", capabilities=caps)
-        else:
-            print("Invalid option...using PhantomJS")
-            isPhantom = True
-            driver = webdriver.PhantomJS(
-                "../drivers/phantomjs.exe", service_log_path="../logs/phantom.log")
-    else:
-        isPhantom = True
-        driver = webdriver.PhantomJS(
-            "../drivers/phantomjs.exe", service_log_path="../logs/phantom.log")
+    driver = getDriver(sys.argv[2].lower())
 
-    # Navigate to BannerWeb.
-    driver.get("https://prod11gbss8.rose-hulman.edu/BanSS/twbkwbis.P_WWWLogin")
-
-    # Login to Bannerweb.
-    driver.find_element_by_name("sid").send_keys(dataMap["username"])
-    driver.find_element_by_name("PIN").send_keys(dataMap["password"])
-    clickTagWithValue(driver, "input", "Login")
-
-    # Navigate to Registeration page and enter PIN.
-    driver.get("https://prod11gbss8.rose-hulman.edu/BanSS/bwskfreg.P_AltPin")
-    clickTagWithValue(driver, "input", "Submit")
-    driver.find_element_by_name("pin").send_keys(dataMap["pin"])
-    clickTagWithValue(driver, "input", "Submit")
-
-    # Refresh page until crnFields are found.
-    firstTimeWaiting = True
-    while (True):
-        # Screenshot the first time it reaches this loop.
-        if (firstTimeWaiting):
-            driver.save_screenshot("../img/waitPage.jpg")
-            firstTimeWaiting = False
-
-        # Prevent refreshing until two minutes before opening time
-        currentTime = datetime.datetime.now()
-        if (currentTime.hour < 7 or currentTime.minute < 28):
-            print(currentTime)
-            continue
-
-        # Enter CRN info.
+    # try to auto registerate, retry if there is an exception
+    while True:
         try:
-            crnFields = fillInCrn(driver, crnInput)
+            AutoRegister(driver, dataMap)
             break
-        except(NoSuchElementException):
-            print("Page Not Ready.")
-            driver.refresh()
-            if (isFirefox):
-                Alert(driver).accept()
+        except NoSuchElementException as e:
+            print("NoSuchElementException happened :" + str(e))
+            pass
 
-    # Get potential submit buttons.
-    regButtons = driver.find_elements_by_name("REG_BTN")
-
-    # Submit Changes
-    for element in regButtons:
-        if (element.get_attribute("value") == "Submit Changes"):
-            element.click()
-            break
-
-    # Take picture and close driver.
-    driver.save_screenshot("../img/confirmation.jpg")
-    if (isPhantom):
+    # quiting the program
+    if (isinstance(driver, webdriver.PhantomJS)):
         driver.close()
     else:
         print("Waiting For User to terminate (Ctrl-C)")
         while(True):
             pass
 
+def AutoRegister(driver, dataMap):
+    # login into banner and navigate to registeration page
+    login(driver, dataMap[dataMapUserName_Key], dataMap[dataMapPassword_Key])
+    enterRegisterationPage(driver, dataMap[dataMapPin_Key])
+
+    # Take picture of the waiting page
+    driver.save_screenshot("../img/waitPage.jpg")
+
+    startTime = datetime.strptime(dataMap[attempt_time_key][0], "%H:%M:%S-%m/%d/%Y")
+
+    # Refresh page until crnFields are found.
+    while True:
+        # Prevent refreshing until two minutes before opening time
+        currentTime = datetime.now()
+        if currentTime < startTime:
+            print(currentTime)
+            continue
+        break
+
+    # attempt to registerate
+    if not attemptToRegisterate(driver, dataMap[dataMapCRN_Key]):
+        login(driver, dataMap[dataMapUserName_Key], dataMap[dataMapPassword_Key])
+        enterRegisterationPage(driver, dataMap[dataMapPin_Key])
+        # active trying
+        while True:
+            # Enter CRN info and registerate
+            if attemptToRegisterate(driver, dataMap[dataMapCRN_Key]):
+                break;
+
+    # Take picture and close driver.
+    driver.save_screenshot("../img/confirmation.jpg")
+    return True
+
+def getDriver(browser):
+    if (browser == "chrome"):
+        return webdriver.Chrome(
+            "../drivers/chromedriver.exe", service_log_path="../logs/chrome.log")
+    elif (browser == "phantom"):
+        return webdriver.PhantomJS(
+            "../drivers/phantomjs.exe", service_log_path="../logs/phantom.log")
+    elif (browser == "firefox"):
+        # Based on MDN. Import when only required to. (Firefox has Alert(driver))
+        from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+        caps = DesiredCapabilities.FIREFOX
+        caps["marionette"] = True
+        return webdriver.Firefox(
+            executable_path="../drivers/geckodriver.exe", capabilities=caps)
+    else:
+        print("Invalid option...using PhantomJS")
+        return webdriver.PhantomJS(
+            "../drivers/phantomjs.exe", service_log_path="../logs/phantom.log")
+
+
+def login(driver, userName, password):
+    # Navigate to BannerWeb.
+    driver.get(BANNER_WEB_URL)
+
+    # Login to Bannerweb.
+    driver.find_element_by_name("sid").send_keys(userName)
+    driver.find_element_by_name("PIN").send_keys(password)
+    clickTagWithValue(driver, "input", "Login")
+
+
+def enterRegisterationPage(driver, pin):
+    # Navigate to Registeration page and enter PIN.
+    driver.get("https://prod11gbss8.rose-hulman.edu/BanSS/bwskfreg.P_AltPin")
+    clickTagWithValue(driver, "input", "Submit")
+    driver.find_element_by_name("pin").send_keys(pin)
+    clickTagWithValue(driver, "input", "Submit")
+
+
+def attemptToRegisterate(driver, crnInput):
+    """
+        Gets the CRN text box and fills it in with crn numbers.
+
+        Arguments:
+            :type driver :    webdriver
+                Selenium Webdriver.
+            :type crnInput :  list
+                List of CRN numbers.
+
+        Returns a list of CRN text box.
+        Raises Selenium.NoSuchElementException
+    """
+    try:
+        for identifier in range(1, len(crnInput)+1):
+            element = driver.find_element_by_id("crn_id" + str(identifier))
+            element.send_keys(crnInput[identifier - 1])
+            identifier += 1
+        clickTagWithValue(driver, "input", "Submit Changes")
+    except(NoSuchElementException):
+        print("Page Not Ready.")
+        driver.refresh()
+        if (isinstance(driver, webdriver.Firefox)):
+            Alert(driver).accept()
+        return False
+    driver.find_element_by_id("crn_id1")
+    return True
 
 def getData(dataFile):
     """
@@ -173,30 +197,16 @@ def clickTagWithValue(driver, tagName, value):
             break
 
 
-def fillInCrn(driver, crnInput):
+def setup_directory():
     """
-        Gets the CRN text box and fills it in with crn numbers.
-
-        Arguments:
-            :type driver :    webdriver
-                Selenium Webdriver.
-            :type crnInput :  list
-                List of CRN numbers.
-
-        Returns a list of CRN text box.
-        Raises Selenium.NoSuchElementException
+        Creates the logs and img files if not created.
     """
-    crnFields = []
-    identifier = 1
+    # Make directory for logs and images if necessary.
+    if (not os.path.isdir("../logs/")):
+        os.makedirs("../logs/")
+    if (not os.path.isdir("../img/")):
+        os.makedirs("../img/")
 
-    # xpath variant.
-    #   driver.find_element_by_xpath("/html/body/div[3]/form/table[3]/tbody/tr[2]/td[1]/input[@id='crn_id1']").send_keys("hello")
-    while (len(crnFields) < len(crnInput)):
-        crnFields.append(driver.find_element_by_id(
-            "crn_id" + str(identifier)).send_keys(crnInput[identifier - 1]))
-        identifier += 1
-
-    return crnFields
 
 if __name__ == "__main__":
     main()

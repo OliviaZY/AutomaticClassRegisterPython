@@ -2,3 +2,4 @@ username **someUserName**
 password **accountPassword**
 crn **4 digit crn code seperated by spaces**
 pin **student specific pin code**
+attempt_start 7:28:00-1/24/2017

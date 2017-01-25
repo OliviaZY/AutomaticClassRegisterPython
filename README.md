@@ -18,14 +18,14 @@ This has been tested during the Fall 2016-2017 registration period. I was able t
 
 # Installation:
   1. Before you run the script you need to install `Selenium for Python`
-  2. Either download the zip folder of this repository or run `$ git clone https://github.com/lamdaV/AutomaticClassRegisterPython.git`
+  2. Either download the zip folder of this repository or run `$ git clone https://github.com/fredzqm/AutomaticClassRegisterPython.git`
   3. Navigate to the root of this project directory.
   4. Run the following command: `pip install -r requirements.txt`
 
 # How to Use:
-  1. Edit the `data.txt` file. Any text surrounded by "**" should be deleted and replaced with valid data.
+  1. Edit the `data.txt` file. Any text surrounded by "**" should be deleted and replaced with valid data. The time after attempt_start will determine when the script starts to refreshing the site. __Make sure it is before you registeration date__
   2. Navigate to where `autoRegister.py`.
-  4. Execute `python autoRegister.py <data.txt> <optional: browser name>`
+  4. Execute `python autoRegister.py <data.txt> <optional: browser name>` in the src folder
      - Current browser names: "phantom", "chrome", and "firefox" without the quotes. The script does not care about casing.
      - **Warning:** PhantomJS is a headless browser with no visual feedback. Check the `confirmation.jpg` file to ensure if you have successfully registered. For those paranoid, I suggest staying away from the headless browser default.
   5. The script will execute and navigate to the registration page. If it is not yet 7:28 AM, the script will print the current time. If it is pass 7:28 AM, it will constantly refresh the page until registration is ready. Then, it will fill out the fields and submit. While it is waiting, there will be screenshot taken called `waitingPage.jpg` saved in the `img` directory located at the root of this directory.
