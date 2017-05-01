@@ -20,77 +20,27 @@ from datetime import datetime
 import os
 import sys
 import time
+import argparse
 
+# Global Constants.
 BANNER_WEB_URL = "https://prod11gbss8.rose-hulman.edu/BanSS/twbkwbis.P_WWWLogin"
-dataMapUserName_Key = "username"
-dataMapPassword_Key = "password"
-dataMapPin_Key = "pin"
-dataMapCRN_Key = "crn"
-attempt_time_key = "attempt_start"
+username_KEY = "username"
+PASSWORD_KEY = "password"
+PIN_KEY = "pin"
+CRN_KEY = "crn"
+START_KEY = "start"
 
-def main():
-    # Ensure a data file path is given.
-    if (len(sys.argv) < 2):
-        print("AutoRegister.py <dataFile> <opt:browser>")
-        return
-    setup_directory()
 
-    # Initialize Data.
-    dataMap = getData(sys.argv[1])
-    # Initialize Webdriver.
-    driver = getDriver(sys.argv[2].lower())
+def get_driver(browser):
+    """
+        Gets the driver for the specified browser
 
-    # try to auto registerate, retry if there is an exception
-    while True:
-        try:
-            AutoRegister(driver, dataMap)
-            break
-        except NoSuchElementException as e:
-            print("NoSuchElementException happened :" + str(e))
-            pass
+        Arguments:
+            :type browser       String
+                browser webdriver to return.
 
-    # quiting the program
-    if (isinstance(driver, webdriver.PhantomJS)):
-        driver.close()
-    else:
-        print("Waiting For User to terminate (Ctrl-C)")
-        while(True):
-            pass
-
-def AutoRegister(driver, dataMap):
-    # login into banner and navigate to registeration page
-    login(driver, dataMap[dataMapUserName_Key], dataMap[dataMapPassword_Key])
-    enterRegisterationPage(driver, dataMap[dataMapPin_Key])
-
-    # Take picture of the waiting page
-    driver.save_screenshot("../img/waitPage.jpg")
-
-    startTime = datetime.strptime(dataMap[attempt_time_key][0], "%H:%M:%S-%m/%d/%Y")
-
-    # Refresh page until crnFields are found.
-    while True:
-        # Prevent refreshing until two minutes before opening time
-        currentTime = datetime.now()
-        if currentTime < startTime:
-            print(currentTime)
-            continue
-        break
-
-    # attempt to registerate
-    if not attemptToRegisterate(driver, dataMap[dataMapCRN_Key]):
-        login(driver, dataMap[dataMapUserName_Key], dataMap[dataMapPassword_Key])
-        enterRegisterationPage(driver, dataMap[dataMapPin_Key])
-        # active trying
-        while True:
-            # Enter CRN info and registerate
-            if attemptToRegisterate(driver, dataMap[dataMapCRN_Key]):
-                break;
-
-    # Take picture and close driver.
-    driver.save_screenshot("../img/confirmation.jpg")
-    return True
-
-def getDriver(browser):
+        Returns the Webdriver for the specified browser.
+    """
     if (browser == "chrome"):
         return webdriver.Chrome(
             "../drivers/chromedriver.exe", service_log_path="../logs/chrome.log")
@@ -106,71 +56,7 @@ def getDriver(browser):
             "../drivers/phantomjs.exe", service_log_path="../logs/phantom.log")
 
 
-def login(driver, userName, password):
-    # Navigate to BannerWeb.
-    driver.get(BANNER_WEB_URL)
-
-    # Login to Bannerweb.
-    driver.find_element_by_name("sid").send_keys(userName)
-    driver.find_element_by_name("PIN").send_keys(password)
-    clickTagWithValue(driver, "input", "Login")
-
-
-def enterRegisterationPage(driver, pin):
-    # Navigate to Registeration page and enter PIN.
-    driver.get("https://prod11gbss8.rose-hulman.edu/BanSS/bwskfreg.P_AltPin")
-    clickTagWithValue(driver, "input", "Submit")
-    driver.find_element_by_name("pin").send_keys(pin)
-    clickTagWithValue(driver, "input", "Submit")
-
-
-def attemptToRegisterate(driver, crnInput):
-    """
-        Gets the CRN text box and fills it in with crn numbers.
-
-        Arguments:
-            :type driver :    webdriver
-                Selenium Webdriver.
-            :type crnInput :  list
-                List of CRN numbers.
-
-        Returns a list of CRN text box.
-        Raises Selenium.NoSuchElementException
-    """
-    try:
-        for identifier in range(1, len(crnInput)+1):
-            element = driver.find_element_by_id("crn_id" + str(identifier))
-            element.send_keys(crnInput[identifier - 1])
-            identifier += 1
-        clickTagWithValue(driver, "input", "Submit Changes")
-    except(NoSuchElementException):
-        print("Page Not Ready.")
-        driver.refresh()
-        if (isinstance(driver, webdriver.Firefox)):
-            Alert(driver).accept()
-        return False
-    driver.find_element_by_id("crn_id1")
-    return True
-
-def getData(dataFile):
-    """
-        Pulls user data from data.txt.
-
-        Returns a dictionary of relevant data.
-    """
-    dataFile = open(dataFile, "r")
-    dataMap = {}
-
-    for line in dataFile:
-        lineList = line.split()
-        dataMap[lineList[0]] = lineList[1:len(lineList)]
-
-    dataFile.close()
-
-    return dataMap
-
-
-def clickTagWithValue(driver, tagName, value):
+def click_tag_with_value(driver, tag_name, value):
     """
        Attempts to click on a button with a specific tag name and value.
        It will click the first button with specified value.
@@ -178,19 +64,84 @@ def clickTagWithValue(driver, tagName, value):
        Arguments:
            :type driver :     webdriver
                Selenium Webdriver.
-           :type tagName :    str
+           :type tag_name :    str
                Specified HTML tag name.
            :type value :      str
                Specified HTML value related to tag name.
 
         Returns nothing.
     """
-    inputList = driver.find_elements_by_tag_name(tagName)
+    inputList = driver.find_elements_by_tag_name(tag_name)
 
     for element in inputList:
         if (element.get_attribute("value") == value):
             element.click()
             break
+
+
+def attempt_to_register(driver, crn_input):
+    """
+        Gets the CRN text box and fills it in with crn numbers.
+
+        Arguments:
+            :type driver :    webdriver
+                Selenium Webdriver.
+            :type crn_input :  list
+                List of CRN numbers.
+
+        Returns a list of CRN text box.
+
+        Raises Selenium.NoSuchElementException
+    """
+    try:
+        for identifier in range(1, len(crn_input) + 1):
+            element = driver.find_element_by_id("crn_id" + str(identifier))
+            element.send_keys(crn_input[identifier - 1])
+            identifier += 1
+        click_tag_with_value(driver, "input", "Submit Changes")
+    except (NoSuchElementException):
+        print("Page Not Ready.")
+        driver.refresh()
+        if (isinstance(driver, webdriver.Firefox)):
+            Alert(driver).accept()
+        return False
+    return True
+
+
+def parse_arguments():
+    """
+        Returns the arguments parsed from the command line.
+    """
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "-d", "--data", help="Data text file file path", required=True)
+    parser.add_argument(
+        "-b", "--browser", help="Webdriver to use", default="phantom", required=True)
+
+    return parser.parse_args()
+
+
+def get_data(data_file):
+    """
+        Pulls user data from data.txt.
+
+        Arguments:
+            :type data_file     String
+                Path String to data text.
+
+        Returns a dictionary of relevant data.
+    """
+    data_file = open(data_file, "r")
+    dataMap = {}
+
+    for line in data_file:
+        lineList = line.split()
+        dataMap[lineList[0]] = lineList[1:len(lineList)]
+
+    data_file.close()
+
+    return dataMap
 
 
 def setup_directory():
