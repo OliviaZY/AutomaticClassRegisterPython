@@ -10,23 +10,21 @@ Technlogies Used:
 Currently supported browsers:
   - PhantomJS             (Default)
   - Chrome
-  - Mozilla Firefox       (Unreliable due to Marionette update)
+  - Mozilla Firefox       (Geckodriver does not implicitly wait for document.readyState upon element clicks)
 
 I have not tested other browsers; however, all Selenium supported browsers should be supported by the script with minor modifications.
 
-This has been tested during the Fall 2016-2017 registration period. I was able to get into two classes with less than 6 available spots.
-
 # Installation:
-  1. Before you run the script you need to install `Selenium for Python`
-  2. Either download the zip folder of this repository or run `$ git clone https://github.com/fredzqm/AutomaticClassRegisterPython.git`
-  3. Navigate to the root of this project directory.
-  4. Run the following command: `pip install -r requirements.txt`
+  1. Either download the zip folder of this repository or run `$ git clone https://github.com/fredzqm/AutomaticClassRegisterPython.git`
+  2. Navigate to the root of this project directory.
+  3. Run the following command: `pip install -r requirements.txt`
+     - This will install `Selenium for Python` for you.
 
 # How to Use:
   1. Edit the `data.txt` file. Any text surrounded by `**` should be deleted and replaced with valid data. The time after `start` will determine when the script starts to refreshing the site. **Make sure it is before your registeration date.**
   2. Navigate to where `autoRegister.py`.
-  4. Execute `python autoRegister.py <data.txt> <optional: browser name>` in the src folder
-     - Current browser names: "phantom", "chrome", and "firefox" without the quotes. The script does not care about casing.
+  4. Execute `python autoRegister.py -d <data.txt> -b <optional: browser name>` in the src folder
+     - Current browser names: `phantom`, `chrome`, and `firefox`. The script does not care about casing.
      - **Warning:** PhantomJS is a headless browser with no visual feedback. Check the `confirmation.jpg` file to ensure if you have successfully registered. For those paranoid, I suggest staying away from the headless browser default.
   5. The script will execute and navigate to the registration page. If it is not yet 7:28 AM, the script will print the current time. If it is pass 7:28 AM, it will constantly refresh the page until registration is ready. Then, it will fill out the fields and submit. While it is waiting, there will be screenshot taken called `waitingPage.jpg` saved in the `img` directory located at the root of this directory.
   6. Once completed, a screenshot will be taken and saved in the an `img` directory located at the root of the directory as `confirmation.jpg`. The browser will then close.
