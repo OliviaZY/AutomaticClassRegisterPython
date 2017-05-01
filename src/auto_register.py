@@ -16,6 +16,7 @@ Created on Jan 28, 2016
 from selenium import webdriver
 from selenium.webdriver.common.alert import Alert
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.action_chains import ActionChains
 from datetime import datetime
 import os
 import sys
@@ -94,10 +95,24 @@ def attempt_to_register(driver, crn_input):
         Raises Selenium.NoSuchElementException
     """
     try:
+        firstElement = None
         for identifier in range(1, len(crn_input) + 1):
             element = driver.find_element_by_id("crn_id" + str(identifier))
             element.send_keys(crn_input[identifier - 1])
-        click_tag_with_value(driver, "input", "Submit Changes")
+            if (identifier == 1):
+                firstElement = element
+
+        # Old way: Look up all input tags (about 100+)
+        # Then, linearly scan for an input with value "Submit Changes"
+        # click_tag_with_value(driver, "input", "Submit Changes")
+
+        # Hard coded the offset from Chrome experimentation.
+        # Use WebElement.location to find proper offset values.
+        action = ActionChains(driver)
+        action.move_to_element_with_offset(firstElement, 0, 43)
+        action.click()
+        action.perform()
+
     except (NoSuchElementException):
         print("Page Not Ready.")
         driver.refresh()
