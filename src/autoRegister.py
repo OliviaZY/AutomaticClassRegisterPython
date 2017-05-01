@@ -98,12 +98,8 @@ def getDriver(browser):
         return webdriver.PhantomJS(
             "../drivers/phantomjs.exe", service_log_path="../logs/phantom.log")
     elif (browser == "firefox"):
-        # Based on MDN. Import when only required to. (Firefox has Alert(driver))
-        from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-        caps = DesiredCapabilities.FIREFOX
-        caps["marionette"] = True
         return webdriver.Firefox(
-            executable_path="../drivers/geckodriver.exe", capabilities=caps)
+            executable_path="../drivers/geckodriver.exe", log_path="../logs/firefox.log")
     else:
         print("Invalid option...using PhantomJS")
         return webdriver.PhantomJS(
@@ -207,6 +203,118 @@ def setup_directory():
     if (not os.path.isdir("../img/")):
         os.makedirs("../img/")
 
+
+def login(driver, username, password):
+    """
+        Login to BannerWeb.
+
+        Arguments:
+            :type driver :        webdriver
+                Selenium Webdriver.
+            :type username :      String
+                Rose-Hulman username.
+            :type password :      String
+                Rose-Hulman password.
+    """
+    # Navigate to BannerWeb.
+    driver.get(BANNER_WEB_URL)
+
+    # Login to Bannerweb.
+    driver.find_element_by_name("sid").send_keys(username)
+    driver.find_element_by_name("PIN").send_keys(password)
+    click_tag_with_value(driver, "input", "Login")
+
+
+def navigate_to_registration_page(driver, pin):
+    """
+        Navigates to the registration page and enters the given pin.
+
+        Arguments:
+            :type driver        webdriver
+                Selenium Webdriver.
+            :type pin           String
+                Rose-Hulman user PIN.
+    """
+    # Navigate to Registeration page and enter PIN.
+    driver.get("https://prod11gbss8.rose-hulman.edu/BanSS/bwskfreg.P_AltPin")
+    click_tag_with_value(driver, "input", "Submit")
+    driver.find_element_by_name("pin").send_keys(pin)
+    click_tag_with_value(driver, "input", "Submit")
+
+
+def auto_register(driver, data_map):
+    """
+        Arguments:
+            :type driver        webdriver
+                Selenium webdriver.
+            :type data_map      Dictionary
+                Data dictionary of input data.
+    """
+    # login into banner and navigate to registeration page
+    login(driver, data_map[username_KEY], data_map[PASSWORD_KEY])
+    navigate_to_registration_page(driver, data_map[PIN_KEY])
+
+    # Take picture of the waiting page
+    driver.save_screenshot("../img/waitPage.jpg")
+
+    # Grab the start time if available.
+    start_time = datetime.strptime(data_map[START_KEY][0], "%H:%M:%S-%m/%d/%Y")
+
+    # Wait until specified start_time if provided.
+    while True:
+        # Prevent refreshing until start_time.
+        currentTime = datetime.now()
+        if currentTime < start_time:
+            print(currentTime)
+            continue
+        break
+
+    # Attempt to register.
+    if not attempt_to_register(driver, data_map[CRN_KEY]):
+        login(driver, data_map[username_KEY], data_map[PASSWORD_KEY])
+        navigate_to_registration_page(driver, data_map[PIN_KEY])
+        # Actively attempt to register.
+        while True:
+            # Enter CRN info and registerate
+            if attempt_to_register(driver, data_map[CRN_KEY]):
+                break
+
+    # Take picture and close driver.
+    driver.save_screenshot("../img/confirmation.jpg")
+    return True
+
+
+def main():
+    """
+        Driver Function.
+    """
+    # Get arguments and setup.
+    arguments = parse_arguments()
+    setup_directory()
+
+    # Initialize Data.
+    data_map = get_data(arguments.data)
+
+    # Initialize Webdriver.
+    driver = get_driver(arguments.browser.lower())
+
+    # Try to Auto Register, retry if there is an exception
+    while (True):
+        try:
+            auto_register(driver, data_map)
+            break
+        except NoSuchElementException as e:
+            print("NoSuchElementException: " + str(e))
+            pass
+
+    # Close the driver if it is the PhantomJS driver.
+    # Otherwise, leave the webdriver open for user manual overrides.
+    if (isinstance(driver, webdriver.PhantomJS)):
+        driver.close()
+    else:
+        print("Waiting For User to terminate (Ctrl-C)")
+        while(True):
+            pass
 
 if __name__ == "__main__":
     main()
