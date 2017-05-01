@@ -97,7 +97,6 @@ def attempt_to_register(driver, crn_input):
         for identifier in range(1, len(crn_input) + 1):
             element = driver.find_element_by_id("crn_id" + str(identifier))
             element.send_keys(crn_input[identifier - 1])
-            identifier += 1
         click_tag_with_value(driver, "input", "Submit Changes")
     except (NoSuchElementException):
         print("Page Not Ready.")
@@ -165,7 +164,7 @@ def login(driver, username, password):
             :type username :      String
                 Rose-Hulman username.
             :type password :      String
-                Rose-Hulman password.
+                Rose-Hulman passwordpop.
     """
     # Navigate to BannerWeb.
     driver.get(BANNER_WEB_URL)
