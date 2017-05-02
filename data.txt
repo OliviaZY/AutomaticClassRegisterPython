@@ -2,4 +2,4 @@ username **someUserName**
 password **accountPassword**
 crn **4 digit crn code seperated by spaces**
 pin **student specific pin code**
-start **hh:mm:ss-mm:dd:yyyy**
+start **hh:mm:ss-mm/dd/yyyy**
