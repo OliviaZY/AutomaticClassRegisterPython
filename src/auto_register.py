@@ -16,11 +16,9 @@ Created on Jan 28, 2016
 from selenium import webdriver
 from selenium.webdriver.common.alert import Alert
 from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.action_chains import ActionChains
 from datetime import datetime
 import os
 import sys
-import time
 import argparse
 
 # Global Constants.
@@ -105,13 +103,22 @@ def attempt_to_register(driver, crn_input):
         # Old way: Look up all input tags (about 100+)
         # Then, linearly scan for an input with value "Submit Changes"
         # click_tag_with_value(driver, "input", "Submit Changes")
+        
+        # Using the below code snippet, the submit_button is always the 130th button.
+        # This assumes the page does not change and add new input fields.
+        # There is about 133 input elements in the page. It is slow to get the attribute of an element.
+        # Slightly faster to have this assumption at the cost of variability.
+        inputList = driver.find_elements_by_tag_name("input")
+        submit_button = inputList[130]
+        submit_button.click()
 
-        # Hard coded the offset from Chrome experimentation.
-        # Use WebElement.location to find proper offset values.
-        action = ActionChains(driver)
-        action.move_to_element_with_offset(firstElement, 0, 43)
-        action.click()
-        action.perform()
+        # print(len(inputList))
+        # for k in range(len(inputList) - 1, -1, -1):
+        #     element = inputList[k]
+        #     if (element.get_attribute("value") == "Submit Changes"):
+        #         print("found element at " + str(k))
+        #         element.click()
+        #         break
 
     except (NoSuchElementException):
         print("Page Not Ready.")
