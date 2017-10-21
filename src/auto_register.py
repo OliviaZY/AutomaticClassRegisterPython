@@ -17,9 +17,10 @@ from selenium import webdriver
 from selenium.webdriver.common.alert import Alert
 from selenium.common.exceptions import NoSuchElementException
 from datetime import datetime
-import os
-import sys
 import argparse
+import os
+import platform
+import sys
 
 # Global Constants.
 BANNER_WEB_URL = "https://prod11gbss8.rose-hulman.edu/BanSS/twbkwbis.P_WWWLogin"
@@ -29,6 +30,10 @@ PIN_KEY = "pin"
 CRN_KEY = "crn"
 START_KEY = "start"
 
+def append_exe_if_needed(os_name, driver_path):
+    if (os_name == "Darwin"):
+        return driver_path
+    return driver_path + ".exe"
 
 def get_driver(browser):
     """
@@ -40,19 +45,24 @@ def get_driver(browser):
 
         Returns the Webdriver for the specified browser.
     """
+    os_name = platform.system()
     if (browser == "chrome"):
-        return webdriver.Chrome(
-            "../drivers/chromedriver.exe", service_log_path="../logs/chrome.log")
+        driver_path = append_exe_if_needed(os_name, "../drivers/chromedriver")
+        return webdriver.Chrome(driver_path,
+                                service_log_path="../logs/chrome.log")
     elif (browser == "phantom"):
-        return webdriver.PhantomJS(
-            "../drivers/phantomjs.exe", service_log_path="../logs/phantom.log")
+        driver_path = append_exe_if_needed(os_name, "../drivers/phantomjs")
+        return webdriver.PhantomJS(driver_path,
+                                   service_log_path="../logs/phantom.log")
     elif (browser == "firefox"):
-        return webdriver.Firefox(
-            executable_path="../drivers/geckodriver.exe", log_path="../logs/firefox.log")
+        driver_path = append_exe_if_needed(os_name, "../drivers/geckodriver")
+        return webdriver.Firefox(executable_path=driver_path,
+                                 log_path="../logs/firefox.log")
     else:
         print("Invalid option...using PhantomJS")
-        return webdriver.PhantomJS(
-            "../drivers/phantomjs.exe", service_log_path="../logs/phantom.log")
+        driver_path = append_exe_if_needed(os_name, "../drivers/phantomjs")
+        return webdriver.PhantomJS(driver_path,
+                                   service_log_path="../logs/phantom.log")
 
 
 def click_tag_with_value(driver, tag_name, value):
@@ -103,7 +113,7 @@ def attempt_to_register(driver, crn_input):
         # Old way: Look up all input tags (about 100+)
         # Then, linearly scan for an input with value "Submit Changes"
         # click_tag_with_value(driver, "input", "Submit Changes")
-        
+
         # Using the below code snippet, the submit_button is always the 130th button.
         # This assumes the page does not change and add new input fields.
         # There is about 133 input elements in the page. It is slow to get the attribute of an element.
